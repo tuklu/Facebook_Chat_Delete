@@ -1,0 +1,23 @@
+# Ignore compiled Python files
+*.pyc
+__pycache__/
+
+# Ignore secret files (credentials and keys)
+credentials.json
+secret.key
+
+# Ignore specific folders like previous attempts or log files
+Previous_attempt/
+
+# Ignore VNC or secure store specific keys
+ai/secret.key
+ai/cookies.json
+
+# Ignore full screenshots and previous template attempts
+full_screenshot.png
+confirmation_screenshot.png
+menu_screenshot.png
+
+# Ignore virtual environment files (if using virtualenv or similar)
+venv/
+env/
