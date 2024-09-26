@@ -8,6 +8,22 @@ secret.key
 
 # Ignore specific folders like previous attempts or log files
 Previous_attempt/
+Previous_appempt/tempCodeRunnerFile.py
+Previous_appempt/newlivui.py
+Previous_appempt/messenger_icon_template.png
+Previous_appempt/messangerdelete.py
+Previous_appempt/LoginUI.py
+Previous_appempt/loginpageUIv2.py
+Previous_appempt/loginpageUI.py
+Previous_appempt/lamV2.py
+Previous_appempt/lam.py
+Previous_appempt/fb_delete.py
+Previous_appempt/Facebook_Chat_delete_final.py
+Previous_appempt/edgeSelenium.py
+Previous_appempt/delete.py
+Previous_appempt/chat.py
+Previous_appempt/app.py
+Previous_appempt/ai.py
 
 # Ignore VNC or secure store specific keys
 ai/secret.key
