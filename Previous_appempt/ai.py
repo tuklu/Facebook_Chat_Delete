@@ -25,11 +25,9 @@ try:
         
     # Log in
     email_element = driver.find_element(By.ID, "email")
-    # email_element.send_keys("manabjkalita86@gmail.com")
-    email_element.send_keys("jisnukalita@yahoo.com")
+    email_element.send_keys("name@example.com")
     password_element = driver.find_element(By.ID, "pass")
-    # password_element.send_keys("Manab7979@")
-    password_element.send_keys("5m::tFqCntzfrai")
+    password_element.send_keys("password")
     password_element.send_keys(Keys.RETURN)
 
     # Wait for login to be completed by checking for the post-login Facebook logo element

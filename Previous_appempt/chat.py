@@ -14,8 +14,8 @@ options.add_argument("--start-maximized")
 options.add_experimental_option("detach",True)
 
 #credincials
-fb_username = "manabjkalita86@gmail.com"
-fb_password = "Manab7979@"
+fb_username = "name@example.com"
+fb_password = "Password"
 
 # Edge service
 driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()),options=options)
