@@ -1,46 +1,96 @@
+import os
+import sys
+import platform
 import time
+import json
 import pyautogui
 import cv2
+import secure_store
+import login
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service as EdgeService
-from selenium.webdriver.edge.options import Options
+from selenium.webdriver.edge.options import Options as EdgeOptions
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.os_manager import ChromeType
+from selenium.webdriver.chrome.service import Service as BraveService
+from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import secure_store
-import login
-import os
-import json
 
-def init_driver_with_session():
-    # Initialize Edge WebDriver
-    options = Options()
-    options.add_argument("--start-maximized")
-    driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
+def get_user_browser_choice():
+    print("Choose a browser:")
+    print("1. Chrome")
+    print("2. Firefox")
+    print("3. Safari (macOS only)")
+    print("4. Edge")
+    print("5. Brave")
+    print("6. Arc")
+    print("Or press Enter for automatic selection")
     
-    # Navigate to Facebook Messenger
-    driver.get("https://www.facebook.com/messages/")
-        
-    # Now proceed with the automation
-    return driver
+    choice = input("Enter your choice (1-6): ").strip()
+    browser_map = {
+        "1": "chrome", "2": "firefox", "3": "safari",
+        "4": "edge", "5": "brave", "6": "arc"
+    }
+    return browser_map.get(choice, "")
 
-def init_driver_with_existing_session():
-    # Initialize Edge WebDriver
-    profile_path="C:/Users/jisnu/AppData/Local/Microsoft/Edge/User Data"
-    profile_name="Default"
-    options = Options()
-    options.add_argument(f"user-data-dir={profile_path}")  
-    options.add_argument(f"profile-directory={profile_name}")
-    options.add_argument("--disable-infobars")
-    options.binary_location = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
-    options.add_argument("--start-maximized")
-    driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
+def init_browser(browser_name):
+    if browser_name == "edge":
+        options = EdgeOptions()
+        options.add_argument("--start-maximized")
+        return webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
+    elif browser_name == "chrome":
+        options = ChromeOptions()
+        options.add_argument("--start-maximized")
+        return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    elif browser_name == "firefox":
+        options = FirefoxOptions()
+        options.add_argument("--start-maximized")
+        return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
+    elif browser_name == "safari":
+        options = webdriver.SafariOptions()
+        options.add_argument("--start-fullscreen")
+        return webdriver.Safari()
+    elif browser_name == "brave":
+        options = ChromeOptions()
+        options.add_argument("--start-maximized")
+        return webdriver.Chrome(service=BraveService(ChromeDriverManager(chrome_type=ChromeType.BRAVE).install()), options=options)
+    elif browser_name == "arc":
+        options = ChromeOptions()
+        options.add_argument("--start-maximized")
+        if os.name == 'posix':
+            options.binary_location = "/Applications/Arc.app/Contents/MacOS/Arc"
+        elif os.name == 'nt':
+            options.binary_location = os.path.join(os.environ.get('LOCALAPPDATA', ''), "Arc", "app-release", "Arc.exe")
+        return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    else:
+        raise ValueError(f"Unsupported browser: {browser_name}")
+
+def init_driver_with_session(browser_choice=""):
+    os_name = platform.system().lower()
+    browsers = ["chrome", "firefox", "edge", "brave", "arc"]
+    if os_name == "darwin":
+        browsers.insert(0, "safari")
+
+    if browser_choice:
+        browsers = [browser_choice] + [b for b in browsers if b != browser_choice]
+
+    for browser in browsers:
+        try:
+            return init_browser(browser)
+        except Exception as e:
+            print(f"Failed to initialize {browser}: {e}")
     
-    return driver
+    print("Failed to initialize any browser.")
+    sys.exit(1)
 
-# Function to check if we landed on messenger safely
 def wait_for_page_load(driver, timeout=30):
     WebDriverWait(driver, timeout).until(
         lambda d: d.execute_script('return document.readyState') == 'complete'
@@ -49,19 +99,13 @@ def wait_for_page_load(driver, timeout=30):
         EC.presence_of_element_located((By.XPATH, "//a[@aria-label='Facebook']"))
     )
 
-# Function to send tab key
 def press_tab(driver, times=10):
     for _ in range(times):
         driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.TAB)
     time.sleep(0.5)
+    return times
 
-    total_tabs = times
-
-    return total_tabs
-
-# Functon to load cookies
 def load_cookies(driver, cookie_file):
-    # Load cookies from the exported JSON file
     with open(cookie_file, 'r') as f:
         cookies = json.load(f)
     for cookie in cookies:
@@ -69,9 +113,7 @@ def load_cookies(driver, cookie_file):
     print("cookies inserted")
     driver.refresh()
 
-# Function to log in to Messenger
 def login_to_messenger(driver, username, password):
-    # Enter email and password
     email_element = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.ID, "email"))
     )
@@ -79,14 +121,9 @@ def login_to_messenger(driver, username, password):
     password_element = driver.find_element(By.ID, "pass")
     password_element.send_keys(password)
     password_element.send_keys(Keys.RETURN)
-
-    # Wait until Messenger page loads
-    wait_for_page_load(driver,200)
-
-    # Unfreeze click at the center of the screen
+    wait_for_page_load(driver, 200)
     pyautogui.click(x=driver.execute_script("return window.innerWidth/2"), y=driver.execute_script("return window.innerHeight/2"))
     time.sleep(1)
-
 
 def find_hidden_menu_button(driver,total_tabs,max_tabs):
     
@@ -289,84 +326,83 @@ def delete_all_chats(driver, total_tabs):
         hover_and_click(hidden_button_position)
         time.sleep(1)
 
-def run_with_cookies():
-    driver = init_driver_with_session()
-    try:
-        wait_for_page_load(driver)
-        press_tab(driver)
-        load_cookies(driver,"cookies.json")
-
-        # Start chat deletion process
-        delete_all_chats(driver)
-    finally:
-        driver.quit()
-
-def run_with_login():
-    login.main()
-    username, password = secure_store.get_credentials()
-    driver = init_driver_with_session()
-    try:
-        login_to_messenger(driver, username, password)
-        press_tab(driver)
-
-        # Start chat deletion process
-        delete_all_chats(driver)
-    finally:
-        driver.quit()
-
-def run_on_ecisting():
-    os.system("taskkill /f /im msedge.exe")
-    driver = init_driver_with_existing_session()
+def run_with_cookies(browser_choice):
+    driver = init_driver_with_session(browser_choice)
+    if not driver:
+        print("Failed to initialize driver. Exiting.")
+        return
     try:
         driver.get("https://www.facebook.com/messages/")
-        wait_for_page_load
+        wait_for_page_load(driver)
         total_tabs = press_tab(driver)
-
-        # Start chat deletion process
+        load_cookies(driver, "cookies.json")
         delete_all_chats(driver, total_tabs)
-        # time.sleep(40)
     finally:
-        driver.quit()
+        if driver:
+            driver.quit()
 
+def run_with_login(browser_choice):
+    login.main()
+    username, password = secure_store.get_credentials()
+    driver = init_driver_with_session(browser_choice)
+    if not driver:
+        print("Failed to initialize driver. Exiting.")
+        return
+    try:
+        driver.get("https://www.facebook.com/messages/")
+        login_to_messenger(driver, username, password)
+        total_tabs = press_tab(driver)
+        delete_all_chats(driver, total_tabs)
+    finally:
+        if driver:
+            driver.quit()
 
-# Main function to handle the overall process
+def run_on_existing(browser_choice):
+    system = platform.system().lower()
+    if system == "windows":
+        os.system("taskkill /f /im msedge.exe & taskkill /f /im chrome.exe & taskkill /f /im firefox.exe")
+    elif system == "darwin":
+        os.system("pkill -f 'Safari|Chrome|Firefox'")
+    elif system == "linux":
+        os.system("pkill chrome & pkill firefox")
+    
+    time.sleep(2)
+    driver = init_driver_with_session(browser_choice)
+    if not driver:
+        print("Failed to initialize driver. Exiting.")
+        return
+
+    try:
+        driver.get("https://www.facebook.com/messages/")
+        wait_for_page_load(driver)
+        total_tabs = press_tab(driver)
+        delete_all_chats(driver, total_tabs)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        if driver:
+            driver.quit()
+
 def main():
     print("Choose a method to proceed:")
     print("1. Use cookies")
     print("2. Full login")
     print("3. Use existing session")
 
-    # Taking user input
     choice = input("Enter the number of your choice (1/2/3): ")
+    browser_choice = get_user_browser_choice()
 
     if choice == '1':
-        run_with_cookies()
+        run_with_cookies(browser_choice)
     elif choice == '2':        
-        run_with_login()        
-        return
+        run_with_login(browser_choice)
     elif choice == '3':
-        run_on_ecisting()
+        run_on_existing(browser_choice)
     else:
         print("Invalid choice. Please restart and choose 1, 2, or 3.")
         return
 
-    # Print confirmation message
     print("All chats have been deleted!")
-
-
-    # Print confirmation message
-    print("All chats have been deleted!")
-    
-    # Step 5: Delete the credentials.json file
-    # credentials_file = "credentials.json"
-    # if os.path.exists(credentials_file):
-    #     try:
-    #         os.remove(credentials_file)
-    #         print(f"{credentials_file} has been deleted.")
-    #     except Exception as e:
-    #         print(f"Error deleting {credentials_file}: {e}")
-    # else:
-    #     print(f"{credentials_file} does not exist.")
 
 if __name__ == "__main__":
     main()
